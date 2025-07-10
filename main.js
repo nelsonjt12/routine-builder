@@ -28,13 +28,20 @@ const routineData = {
   }
 };
 
-function getTodayName() {
-  return new Date().toLocaleDateString("en-US", { weekday: "long" });
+const daysOfWeek = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+function getTodayIndex() {
+  return new Date().getDay();
+}
+
+function getNext7Days() {
+  const todayIndex = getTodayIndex();
+  return Array.from({ length: 7 }, (_, i) => daysOfWeek[(todayIndex + i) % 7]);
 }
 
 function loadChecklist(sectionId, title, tasks) {
   const section = document.getElementById(sectionId);
-  const today = getTodayName();
+  const today = daysOfWeek[getTodayIndex()];
   const saved = JSON.parse(localStorage.getItem(`skincare-${sectionId}-${today}`) || "{}");
 
   const h2 = document.createElement("h2");
@@ -56,18 +63,49 @@ function loadChecklist(sectionId, title, tasks) {
   });
 }
 
-function init() {
-  const today = getTodayName();
-  document.getElementById("title").textContent = `Skincare Tracker – ${today}`;
-
-  const morningTasks = routineData.morning.bpoDays.includes(today)
+function getRoutineForDay(day) {
+  const morningTasks = routineData.morning.bpoDays.includes(day)
     ? routineData.morning.bpoRoutine
     : routineData.morning.default;
 
-  const eveningTasks = routineData.evening.schedule[today] || [];
+  const eveningTasks = routineData.evening.schedule[day] || [];
 
+  return { morningTasks, eveningTasks };
+}
+
+function loadWeekView() {
+  const container = document.getElementById("week-view");
+  getNext7Days().forEach(day => {
+    const { morningTasks, eveningTasks } = getRoutineForDay(day);
+    const block = document.createElement("div");
+    block.className = "day-block";
+
+    const h3 = document.createElement("h3");
+    h3.textContent = `🗓️ ${day}`;
+    block.appendChild(h3);
+
+    const morning = document.createElement("div");
+    morning.innerHTML = `<strong>🌞 Morning:</strong><ul>` +
+      morningTasks.map(t => `<li>${t}</li>`).join("") + `</ul>`;
+    block.appendChild(morning);
+
+    const evening = document.createElement("div");
+    evening.innerHTML = `<strong>🌙 Evening:</strong><ul>` +
+      eveningTasks.map(t => `<li>${t}</li>`).join("") + `</ul>`;
+    block.appendChild(evening);
+
+    container.appendChild(block);
+  });
+}
+
+function init() {
+  const today = daysOfWeek[getTodayIndex()];
+  document.getElementById("today-label").textContent = today;
+
+  const { morningTasks, eveningTasks } = getRoutineForDay(today);
   loadChecklist("morning", "🌞 Morning Routine", morningTasks);
   loadChecklist("evening", "🌙 Evening Routine", eveningTasks);
+  loadWeekView();
 }
 
 init();
